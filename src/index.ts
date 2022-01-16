@@ -1,11 +1,13 @@
 import { API } from 'homebridge';
 
+import { setHap } from './hap';
+import { MySensorsPlatform } from './platform';
 import { PLATFORM_NAME } from './settings';
-import { ExampleHomebridgePlatform } from './platform';
 
 /**
  * This method registers the platform with Homebridge
  */
 export = (api: API) => {
-  api.registerPlatform(PLATFORM_NAME, ExampleHomebridgePlatform);
+  setHap(api.hap);
+  api.registerPlatform(PLATFORM_NAME, MySensorsPlatform);
 };
