@@ -47,12 +47,12 @@
             "type": "string",
             "required": false
           },
-          "client_id": {
+          "clientId": {
             "title": "Client ID",
             "type": "string",
             "required": false
           },
-          "reject_unauthorized": {
+          "rejectUnauthorized": {
             "title": "Disable self-signed SSL certificates",
             "type": "boolean",
             "default": false,
@@ -72,7 +72,7 @@
             "maximum": 5,
             "required": false
           },
-          "disable_qos": {
+          "disableQos": {
             "title": "Disable QoS",
             "type": "boolean",
             "default": false,
@@ -94,7 +94,7 @@
           "baudRate": {
             "title": "BaudRate",
             "type": "number",
-            "required": false,
+            "required": true,
             "placeholder": 115200
           }
         }

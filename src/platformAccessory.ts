@@ -399,7 +399,7 @@ export class MySensorsAccessory implements BasicAccessory {
   }
 
   private getMqttQosLevel(defaultQoS: QoS): QoS {
-    if (this.platform.pluginConfig?.mqtt.disable_qos) {
+    if (this.platform.pluginConfig?.mqtt?.disableQos) {
       return 0;
     }
     return defaultQoS;
