@@ -1,3 +1,4 @@
+import Readline from '@serialport/parser-readline';
 import EventEmitter from 'events';
 import { readFileSync } from 'fs';
 import { Logger } from 'homebridge';
@@ -7,15 +8,20 @@ import {
   IClientPublishOptions,
   MqttClient,
 } from 'mqtt';
-import SerialPort from 'serialport';
+import SerialPort, { OpenOptions } from 'serialport';
 
-import { MqttConfiguration, PluginConfiguration } from './configModels';
+import {
+  MqttConfiguration,
+  PluginConfiguration,
+  SerialConfiguration,
+} from './configModels';
 import { mySensorsProtocolDecoder } from './converter/decoder';
 import { errorToString } from './helpers';
 import {
   Commands,
   MySensorsMqttPattern,
   MySensorsProtocol,
+  MySensorsSerialPattern,
   Transport,
 } from './mySensors/protocol';
 
@@ -241,5 +247,89 @@ export class MySensorsMqttTransport extends MySensorsTransport<MqttClient> {
 
   isConnected(): boolean {
     return this.client !== undefined && !this.client.reconnecting;
+  }
+}
+
+export class MySensorsSerialTransport extends MySensorsTransport<SerialPort> {
+  private serialConfig: Partial<SerialConfiguration>;
+
+  constructor(
+    public readonly log: Logger,
+    readonly config: PluginConfiguration
+  ) {
+    super(config, Transport.SERIAL);
+    this.serialConfig = this.config.serial || {};
+    this.onMessage = this.onMessage.bind(this);
+    this.client = this.initializeClient(config);
+  }
+
+  private createOptions(): OpenOptions {
+    const { baudRate } = this.serialConfig;
+    const options: OpenOptions = {
+      autoOpen: true,
+    };
+    if (baudRate) {
+      this.log.debug(`Using Serial baud rate: ${baudRate}`);
+      options.baudRate = baudRate;
+    }
+    return options;
+  }
+
+  initializeClient(config: PluginConfiguration): SerialPort | undefined {
+    if (!config.serial?.port) {
+      this.log.error('No Serial port defined');
+      return;
+    }
+    this.log.info(`Connecting to Serial port at ${config.serial.port}`);
+    const options = this.createOptions();
+    const serialClient = new SerialPort(config.serial.port, options);
+    serialClient.on('open', () => {
+      this.log.info('Connected to Serial port');
+    });
+    return serialClient;
+  }
+
+  openListener(): void {
+    // Setup Serial parser
+    if (this.client instanceof SerialPort) {
+      const parser = this.client?.pipe(new Readline({ delimiter: '\r\n' }));
+      parser.on('data', this.onMessage);
+    }
+  }
+
+  onMessage(message: MySensorsSerialPattern): void {
+    const protocol = mySensorsProtocolDecoder(Transport.SERIAL, message);
+    if (!protocol) {
+      this.log.debug(
+        'Ignore message, because protocol does not match MySensors Serial API.',
+        message
+      );
+      return;
+    }
+    super.handleMessage(protocol, Transport.SERIAL);
+  }
+
+  publishMessage(message: MySensorsSerialPattern): Promise<void> {
+    if (this.config !== undefined) {
+      if (!this.isConnected) {
+        this.log.error('Not connected to Serial gateway');
+        this.log.error(`Cannot send message to '${message}'}`);
+        return Promise.resolve();
+      }
+      this.log.info(`Publish '${message}'`);
+      return new Promise<void>((resolve) => {
+        this.client?.write(message, (error) => {
+          if (error) {
+            this.log.error(errorToString(error));
+          }
+          resolve();
+        });
+      });
+    }
+    return Promise.resolve();
+  }
+
+  isConnected(): boolean {
+    return this.client !== undefined && this.client.isOpen;
   }
 }

@@ -32,10 +32,12 @@
     "mysensors"
   ],
   "dependencies": {
-    "mqtt": "^4.3.4"
+    "mqtt": "^4.3.4",
+    "serialport": "^9.2.8"
   },
   "devDependencies": {
     "@types/node": "^16.10.9",
+    "@types/serialport": "^8.0.2",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "eslint": "^8.0.1",
