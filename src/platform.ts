@@ -97,13 +97,19 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
     payload: string,
     options?: IClientPublishOptions
   ): Promise<void> {
-    if (transport === Transport.MQTT && this.mqttTransport instanceof MySensorsMqttTransport) {
+    if (
+      transport === Transport.MQTT &&
+      this.mqttTransport instanceof MySensorsMqttTransport
+    ) {
       return this.mqttTransport.publishMessage(
         topic as MySensorsMqttPattern,
         payload,
         options
       );
-    } else if (transport === Transport.SERIAL && this.serialTransport instanceof MySensorsSerialTransport) {
+    } else if (
+      transport === Transport.SERIAL &&
+      this.serialTransport instanceof MySensorsSerialTransport
+    ) {
       return this.serialTransport.publishMessage(
         `${topic as MySensorsSerialPattern};${payload}`
       );
@@ -192,7 +198,7 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
   ): void {
     const existingAccessory = this.findAccessory(protocol, transport);
     if (existingAccessory) {
-      existingAccessory.updateDeviceInformation(protocol);
+      existingAccessory.updateDeviceInformation(protocol, true);
     } else if (protocol.method === Commands.presentation) {
       // the accessory does not yet exist, so we need to create it
       this.createAccessory(

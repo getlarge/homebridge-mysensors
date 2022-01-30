@@ -27,6 +27,14 @@ import { sets } from './mySensors/sets';
 import { MySensorsPlatform } from './platform';
 import { ExtendedTimer } from './timer';
 
+// map containing childIds => resources => values
+type SetResourcesQueue = Map<`${VariableTypes}`, string[]>;
+type SetChildrenQueue = Map<number, SetResourcesQueue>;
+
+// map containing childIds => resources
+type GetResourcesQueue = Set<`${VariableTypes}`>;
+type GetChildrenQueue = Map<number, GetResourcesQueue>;
+
 /**
  * Platform Accessory
  * An instance of this class is created for each accessory your platform registers
@@ -38,11 +46,9 @@ export class MySensorsAccessory implements BasicAccessory {
   private readonly serviceHandlers = new Map<string, ServiceHandler>();
   private readonly serviceIds = new Set<string>();
 
-  // map containing childIds => resources => values
-  private pendingPublishData: Map<number, Map<`${VariableTypes}`, string[]>>;
+  private pendingPublishData: SetChildrenQueue;
   private publishIsScheduled: boolean;
-  // map containing childIds => resources
-  private readonly pendingGetKeys: Map<number, Set<`${VariableTypes}`>>;
+  private readonly pendingGetKeys: GetChildrenQueue;
   private getIsScheduled: boolean;
 
   static getDisplayName<T extends Transport>(
@@ -173,15 +179,45 @@ export class MySensorsAccessory implements BasicAccessory {
     const key = handler.identifier;
     if (this.serviceHandlers.has(key)) {
       this.log.error(
-        `DUPLICATE SERVICE HANDLER with identifier ${key} for accessory ${this.displayName}. New one will not stored.`
+        `DUPLICATE SERVICE HANDLER with identifier ${key} for accessory ${this.displayName}. New one will not be stored.`
       );
     } else {
       this.serviceHandlers.set(key, handler);
     }
   }
 
-  isServiceHandlerIdKnown(identifier: VariableTypes): boolean {
+  getDefaultServiceDisplayName(subType: string | undefined): string {
+    let name = this.displayName;
+    if (subType !== undefined) {
+      name += ` ${subType}`;
+    }
+    return name;
+  }
+
+  isServiceHandlerIdKnown(identifier: string): boolean {
     return this.serviceHandlers.has(identifier);
+  }
+
+  getOrAddService(service: Service): Service {
+    this.serviceIds.add(MySensorsAccessory.getUniqueIdForService(service));
+    const existingService = this.accessory.services.find(
+      (e) => e.UUID === service.UUID && e.subtype === service.subtype
+    );
+
+    if (existingService !== undefined) {
+      return existingService;
+    }
+    return this.accessory.addService(service);
+  }
+
+  matchesIdentifier(
+    protocol: MySensorsProtocol,
+    transport: Transport
+  ): boolean {
+    return (
+      MySensorsAccessory.getDisplayName(protocol, transport) ===
+      this.displayName
+    );
   }
 
   private publishPendingGetKeys(): void {
@@ -217,12 +253,13 @@ export class MySensorsAccessory implements BasicAccessory {
       if (!this.pendingGetKeys.has(childId)) {
         this.pendingGetKeys.set(childId, new Set());
       }
+      const child = this.pendingGetKeys.get(childId) as GetResourcesQueue;
       if (Array.isArray(resources)) {
         for (const k of resources) {
-          this.pendingGetKeys.get(childId)!.add(k);
+          child.add(k);
         }
       } else {
-        this.pendingGetKeys.get(childId)!.add(resources);
+        child.add(resources);
       }
     }
 
@@ -281,10 +318,11 @@ export class MySensorsAccessory implements BasicAccessory {
         resources.set(resource, []);
         this.pendingPublishData.set(childId, resources);
       }
-      if (!this.pendingPublishData.get(childId)!.has(resource)) {
-        this.pendingPublishData.get(childId)!.set(resource, []);
+      const child = this.pendingPublishData.get(childId) as SetResourcesQueue;
+      if (!child.has(resource)) {
+        child.set(resource, []);
       }
-      this.pendingPublishData.get(childId)!.get(resource)!.push(data);
+      child.get(resource)!.push(data);
     }
     this.log.debug(
       `Pending data: ${JSON.stringify(this.pendingPublishData.keys())}`
@@ -296,28 +334,6 @@ export class MySensorsAccessory implements BasicAccessory {
         this.publishPendingSetData();
       });
     }
-  }
-
-  getOrAddService(service: Service): Service {
-    this.serviceIds.add(MySensorsAccessory.getUniqueIdForService(service));
-    const existingService = this.accessory.services.find(
-      (e) => e.UUID === service.UUID && e.subtype === service.subtype
-    );
-
-    if (existingService !== undefined) {
-      return existingService;
-    }
-    return this.accessory.addService(service);
-  }
-
-  matchesIdentifier(
-    protocol: MySensorsProtocol,
-    transport: Transport
-  ): boolean {
-    return (
-      MySensorsAccessory.getDisplayName(protocol, transport) ===
-      this.displayName
-    );
   }
 
   updateDeviceInformation(protocol: MySensorsProtocol, forceUpdate = false) {
@@ -358,6 +374,7 @@ export class MySensorsAccessory implements BasicAccessory {
           protocol as MySensorsProtocol<Commands.presentation>
         );
       }
+      // TODO: investigate non desired deletion
       this.cleanStaleServices();
       if (friendlyNameChanged) {
         this.platform.log.debug(
@@ -415,13 +432,5 @@ export class MySensorsAccessory implements BasicAccessory {
       return 0;
     }
     return defaultQoS;
-  }
-
-  getDefaultServiceDisplayName(subType: string | undefined): string {
-    let name = this.displayName;
-    if (subType !== undefined) {
-      name += ` ${subType}`;
-    }
-    return name;
   }
 }
