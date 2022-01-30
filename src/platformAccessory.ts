@@ -15,7 +15,6 @@ import { hap } from './hap';
 import { isMySensorsProtocol, protocolsAreEquals } from './mySensors/helpers';
 import {
   Commands,
-  Directions,
   Methods,
   MySensorsMqttPattern,
   MySensorsProtocol,
@@ -24,6 +23,7 @@ import {
   Transport,
   VariableTypes,
 } from './mySensors/protocol';
+import { sets } from './mySensors/sets';
 import { MySensorsPlatform } from './platform';
 import { ExtendedTimer } from './timer';
 
@@ -92,14 +92,37 @@ export class MySensorsAccessory implements BasicAccessory {
     );
   }
 
-  get deviceTopic(): `${string}-${Directions}/${number}` | `${number}` {
-    const { gatewayAndDirection, nodeId } = this.accessory.context
-      .protocol as MySensorsProtocol<Commands>;
-
+  getDeviceBaseTopic(
+    direction: 'tx' | 'rx' = 'tx'
+  ): `${string}/${number}` | `${number}` {
+    const { nodeId } = this.accessory.context.protocol;
     if (this.transport === Transport.MQTT) {
-      return `${gatewayAndDirection as `${string}-${Directions}`}/${nodeId}`;
+      const prefix =
+        direction === 'tx'
+          ? this.platform.pluginConfig!.mqtt!.subscribePrefix
+          : this.platform.pluginConfig!.mqtt!.publishPrefix;
+      return `${prefix}/${nodeId}`;
     }
     return `${nodeId}`;
+  }
+
+  getDeviceTopic(
+    childId: number,
+    method: Methods,
+    resource: `${VariableTypes}`,
+    direction: 'tx' | 'rx' = 'tx'
+  ): MySensorsSerialPattern | MySensorsMqttPattern {
+    const resourceInt = sets[resource].value;
+    const ack = 0;
+    const separator =
+      this.transport === Transport.MQTT ? Separator.MQTT : Separator.SERIAL;
+    return [
+      this.getDeviceBaseTopic(direction),
+      childId,
+      method,
+      ack,
+      resourceInt,
+    ].join(separator) as MySensorsSerialPattern | MySensorsMqttPattern;
   }
 
   constructor(
@@ -162,24 +185,22 @@ export class MySensorsAccessory implements BasicAccessory {
   }
 
   private publishPendingGetKeys(): void {
-    for (const [childId, resources] of this.pendingGetKeys.entries()) {
-      const keys = [...resources];
+    for (const [childId, keys] of this.pendingGetKeys.entries()) {
+      const resources = [...keys];
       this.getIsScheduled = false;
-      if (keys.length > 0) {
-        for (const k of keys) {
-          const separator =
-            this.transport === Transport.MQTT
-              ? Separator.MQTT
-              : Separator.SERIAL;
-          const topic = [this.deviceTopic, childId, Methods.req, 0, k].join(
-            separator
-          ) as MySensorsSerialPattern | MySensorsMqttPattern;
-
+      if (resources.length > 0) {
+        for (const resource of resources) {
+          const topic = this.getDeviceTopic(
+            childId,
+            Methods.req,
+            resource,
+            'tx'
+          );
           this.platform.publishMessage(this.transport, topic, '1', {
             qos: this.getMqttQosLevel(1),
           });
           //? wait for message to be  published before deleting ?
-          this.pendingGetKeys.get(childId)!.delete(k);
+          this.pendingGetKeys.get(childId)!.delete(resource);
         }
       }
       // this.pendingGetKeys.delete(childId);
@@ -231,17 +252,8 @@ export class MySensorsAccessory implements BasicAccessory {
 
   private publishPendingSetData() {
     for (const [childId, resources] of this.pendingPublishData.entries()) {
-      const separator =
-        this.transport === Transport.MQTT ? Separator.MQTT : Separator.SERIAL;
-
       for (const [resource, values] of resources.entries()) {
-        const topic = [
-          this.deviceTopic,
-          childId,
-          Methods.req,
-          0,
-          resource,
-        ].join(separator) as MySensorsSerialPattern | MySensorsMqttPattern;
+        const topic = this.getDeviceTopic(childId, Methods.set, resource, 'tx');
         for (const value of values) {
           this.platform.publishMessage(this.transport, topic, value, {
             qos: this.getMqttQosLevel(2),
