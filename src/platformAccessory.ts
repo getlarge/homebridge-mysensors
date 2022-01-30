@@ -55,8 +55,8 @@ export class MySensorsAccessory implements BasicAccessory {
     protocol: MySensorsProtocol<Commands, T>,
     transport: T
   ): string {
-    const { nodeId } = protocol;
-    return `MySensors-${nodeId}-${transport.toUpperCase()}`;
+    const { childId, nodeId } = protocol;
+    return `MySensors-${nodeId}-${childId}-${transport.toUpperCase()}`;
   }
 
   static getUniqueIdForService(service: Service): string {
@@ -351,7 +351,6 @@ export class MySensorsAccessory implements BasicAccessory {
         forceUpdate || newFriendlyName.localeCompare(this.displayName) !== 0;
       // Device info has changed
       this.accessory.context.protocol = protocol;
-      // TODO: check protocol method and type to update services
 
       // Update accessory info
       // Note: getOrAddService is used so that the service is known in this.serviceIds and will not get filtered out.
@@ -408,7 +407,7 @@ export class MySensorsAccessory implements BasicAccessory {
 
     // Call updates
     for (const handler of this.serviceHandlers.values()) {
-      if (handler.childId === state.childId) {
+      if (this.nodeId === state.nodeId && handler.childId === state.childId) {
         handler.updateState(state);
       }
     }
