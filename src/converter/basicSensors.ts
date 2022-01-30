@@ -1,4 +1,4 @@
-import { Service } from 'homebridge';
+import { Characteristic, PrimitiveTypes, Service, WithUUID } from 'homebridge';
 
 import { hap } from '../hap';
 import { getOrAddCharacteristic } from '../helpers';
@@ -13,6 +13,7 @@ import {
 import { BasicAccessory, ServiceCreator, ServiceHandler } from './interfaces';
 import {
   CharacteristicMonitor,
+  MappingCharacteristicMonitor,
   PassthroughCharacteristicMonitor,
 } from './monitor';
 
@@ -213,11 +214,81 @@ class LightSensorHandler extends BasicSensorHandler {
   }
 }
 
+abstract class BinarySensorHandler extends BasicSensorHandler {
+  constructor(
+    protocol: MySensorsProtocol<Commands.presentation>,
+    resources: `${VariableTypes}`[],
+    accessory: BasicAccessory,
+    identifierGen: IdentifierGenerator,
+    logName: string,
+    service: ServiceConstructor,
+    characteristic: WithUUID<{ new (): Characteristic }>,
+    hapOnValue: PrimitiveTypes,
+    hapOffValue: PrimitiveTypes,
+    resource:
+      | VariableTypes.V_TRIPPED
+      | VariableTypes.V_ARMED = VariableTypes.V_TRIPPED
+  ) {
+    super(
+      accessory,
+      protocol.type,
+      resources,
+      protocol.childId,
+      identifierGen,
+      service
+    );
+    accessory.log.debug(`Configuring ${logName} for ${this.serviceName}`);
+
+    getOrAddCharacteristic(this.service, characteristic);
+    const mapping = new Map<PrimitiveTypes, PrimitiveTypes>();
+    mapping.set('1', hapOnValue);
+    mapping.set('0', hapOffValue);
+    this.monitors.push(
+      new MappingCharacteristicMonitor(
+        resource,
+        this.service,
+        characteristic,
+        mapping
+      )
+    );
+  }
+}
+
+class ContactSensorHandler extends BinarySensorHandler {
+  constructor(
+    protocol: MySensorsProtocol<Commands.presentation>,
+    resources: typeof presentations[`${SensorTypes.S_DOOR}`]['resources'],
+    accessory: BasicAccessory
+  ) {
+    super(
+      protocol,
+      resources,
+      accessory,
+      ContactSensorHandler.generateIdentifier,
+      'ContactSensor',
+      (n, t) => new hap.Service.ContactSensor(n, t),
+      hap.Characteristic.ContactSensorState,
+      hap.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED,
+      hap.Characteristic.ContactSensorState.CONTACT_DETECTED,
+      VariableTypes.V_TRIPPED
+    );
+  }
+
+  static generateIdentifier(endpoint: string | undefined) {
+    let identifier = hap.Service.ContactSensor.UUID;
+    if (endpoint !== undefined) {
+      identifier += '_' + endpoint.trim();
+    }
+    return identifier;
+  }
+}
+
 export class BasicSensorCreator implements ServiceCreator {
   private static mapping: BasicSensorMapping[] = [
     new BasicSensorMapping(SensorTypes.S_HUM, HumiditySensorHandler),
     new BasicSensorMapping(SensorTypes.S_TEMP, TemperatureSensorHandler),
     new BasicSensorMapping(SensorTypes.S_LIGHT_LEVEL, LightSensorHandler),
+    new BasicSensorMapping(SensorTypes.S_DOOR, ContactSensorHandler),
   ];
 
   createServicesFromPresentation(
