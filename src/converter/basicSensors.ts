@@ -78,7 +78,7 @@ abstract class BasicSensorHandler implements ServiceHandler {
   get getableKeys(): `${VariableTypes}`[] {
     const keys: `${VariableTypes}`[] = [];
     if (resourcesCanBeGet(this.resources)) {
-      keys.concat(this.resources);
+      return keys.concat(this.resources);
     }
     return keys;
   }

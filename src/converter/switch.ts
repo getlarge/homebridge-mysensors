@@ -103,9 +103,9 @@ class SwitchHandler implements ServiceHandler {
   }
 
   get getableKeys(): `${VariableTypes}`[] {
-    const keys: `${VariableTypes}`[] = [];
+    let keys: `${VariableTypes}`[] = [];
     if (resourcesCanBeGet(this.resources)) {
-      keys.concat(this.resources);
+      keys = [...this.resources];
     }
     return keys;
   }

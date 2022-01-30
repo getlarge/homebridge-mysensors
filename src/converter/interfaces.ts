@@ -37,7 +37,7 @@ export interface ServiceHandler {
   sensorType: SensorTypes;
   childId: number;
   getableKeys: `${VariableTypes}`[];
-  updateState(state: Record<string, unknown>): void;
+  updateState(state: MySensorsProtocol<Commands.set>): void;
 }
 
 export interface ServiceCreator {
