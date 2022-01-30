@@ -96,15 +96,15 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
     topic: MySensorsMqttPattern | MySensorsSerialPattern,
     payload: string,
     options?: IClientPublishOptions
-  ) {
-    if (transport === Transport.MQTT) {
-      return this.mqttTransport?.publishMessage(
+  ): Promise<void> {
+    if (transport === Transport.MQTT && this.mqttTransport instanceof MySensorsMqttTransport) {
+      return this.mqttTransport.publishMessage(
         topic as MySensorsMqttPattern,
         payload,
         options
       );
-    } else if (transport === Transport.SERIAL) {
-      return this.serialTransport?.publishMessage(
+    } else if (transport === Transport.SERIAL && this.serialTransport instanceof MySensorsSerialTransport) {
+      return this.serialTransport.publishMessage(
         `${topic as MySensorsSerialPattern};${payload}`
       );
     }

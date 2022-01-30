@@ -238,10 +238,10 @@ export class MySensorsMqttTransport extends MySensorsTransport<MqttClient> {
       !topic.startsWith(this.publishPrefix) &&
       !topic.startsWith(this.subscribePrefix)
     ) {
-      this.log.debug(
-        `Ignore message, because prefix does not match ${this.publishPrefix} or ${this.subscribePrefix}`,
-        topic
-      );
+      // this.log.debug(
+      //   `Ignore message, because prefix does not match ${this.publishPrefix} or ${this.subscribePrefix}`,
+      //   topic
+      // );
       return;
     }
     const protocol = mySensorsProtocolDecoder(
@@ -266,7 +266,7 @@ export class MySensorsMqttTransport extends MySensorsTransport<MqttClient> {
   ): Promise<void> {
     if (this.config !== undefined) {
       options = { qos: 0, retain: false, ...options };
-      if (!this.isConnected) {
+      if (!this.isConnected || !this.client) {
         this.log.error('Not connected to MQTT server!');
         this.log.error(`Cannot send message '${topic}': '${payload}`);
         return Promise.resolve();
@@ -274,7 +274,7 @@ export class MySensorsMqttTransport extends MySensorsTransport<MqttClient> {
 
       this.log.info(`MQTT Publish '${topic}': '${payload}'`);
       return new Promise<void>((resolve) => {
-        this.client?.publish(topic, payload, options, (error) => {
+        this.client!.publish(topic, payload, options, (error) => {
           if (error) {
             this.log.error(errorToString(error));
           }
@@ -360,14 +360,14 @@ export class MySensorsSerialTransport extends MySensorsTransport<SerialPort> {
 
   publishMessage(message: MySensorsSerialPattern): Promise<void> {
     if (this.config !== undefined) {
-      if (!this.isConnected) {
+      if (!this.isConnected || !this.client) {
         this.log.error('Not connected to Serial gateway');
         this.log.error(`Cannot send message to '${message}'}`);
         return Promise.resolve();
       }
       this.log.info(`Serial Publish '${message}'`);
       return new Promise<void>((resolve) => {
-        this.client?.write(message, (error) => {
+        this.client!.write(message, (error) => {
           if (error) {
             this.log.error(errorToString(error));
           }
