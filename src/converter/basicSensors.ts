@@ -214,6 +214,79 @@ class LightSensorHandler extends BasicSensorHandler {
   }
 }
 
+class AirPressureSensorHandler extends BasicSensorHandler {
+  private static readonly ServiceUUID: string =
+    'E863F00A-079E-48FF-8F27-9C2605A29F52';
+
+  private static readonly CharacteristicUUID: string =
+    'E863F10F-079E-48FF-8F27-9C2605A29F52';
+
+  private static readonly CharacteristicName: string = 'Air Pressure';
+
+  static AirPressureSensor(
+    displayName: string,
+    subtype?: string | undefined
+  ): Service {
+    const service = new hap.Service(
+      displayName,
+      AirPressureSensorHandler.ServiceUUID,
+      subtype
+    );
+    service.addCharacteristic(AirPressureSensorHandler.AirPressure);
+    return service;
+  }
+
+  static get AirPressure(): Characteristic {
+    const characteristic = new hap.Characteristic(
+      AirPressureSensorHandler.CharacteristicName,
+      AirPressureSensorHandler.CharacteristicUUID,
+      {
+        format: hap.Formats.UINT16,
+        perms: [hap.Perms.PAIRED_READ, hap.Perms.NOTIFY],
+        minValue: 700,
+        maxValue: 1100,
+        minStep: 1,
+      }
+    );
+    characteristic.value = 1013;
+    return characteristic;
+  }
+
+  constructor(
+    protocol: MySensorsProtocol<Commands.presentation>,
+    resources: typeof presentations[`${SensorTypes.S_BARO}`]['resources'],
+    accessory: BasicAccessory
+  ) {
+    super(
+      accessory,
+      protocol.type,
+      resources,
+      protocol.childId,
+      AirPressureSensorHandler.generateIdentifier,
+      (n, t) => AirPressureSensorHandler.AirPressureSensor(n, t)
+    );
+    accessory.log.debug(
+      `Configuring AirPressureSensor for ${this.serviceName}`
+    );
+
+    this.monitors.push(
+      new PassthroughCharacteristicMonitor(
+        VariableTypes.V_PRESSURE,
+        this.service,
+        AirPressureSensorHandler.CharacteristicName
+      )
+    );
+  }
+
+  static generateIdentifier(endpoint: string | undefined) {
+    let identifier = AirPressureSensorHandler.ServiceUUID;
+    if (endpoint !== undefined) {
+      identifier += '_' + endpoint.trim();
+    }
+    return identifier;
+  }
+}
+
 abstract class BinarySensorHandler extends BasicSensorHandler {
   constructor(
     protocol: MySensorsProtocol<Commands.presentation>,
@@ -283,12 +356,43 @@ class ContactSensorHandler extends BinarySensorHandler {
   }
 }
 
+class OccupancySensorHandler extends BinarySensorHandler {
+  constructor(
+    protocol: MySensorsProtocol<Commands.presentation>,
+    resources: typeof presentations[`${SensorTypes.S_MOTION}`]['resources'],
+    accessory: BasicAccessory
+  ) {
+    super(
+      protocol,
+      resources,
+      accessory,
+      OccupancySensorHandler.generateIdentifier,
+      'OccupancySensor',
+      (n, t) => new hap.Service.OccupancySensor(n, t),
+      hap.Characteristic.OccupancyDetected,
+      hap.Characteristic.OccupancyDetected.OCCUPANCY_DETECTED,
+      hap.Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED,
+      VariableTypes.V_TRIPPED
+    );
+  }
+
+  static generateIdentifier(endpoint: string | undefined) {
+    let identifier = hap.Service.OccupancySensor.UUID;
+    if (endpoint !== undefined) {
+      identifier += '_' + endpoint.trim();
+    }
+    return identifier;
+  }
+}
+
 export class BasicSensorCreator implements ServiceCreator {
   private static mapping: BasicSensorMapping[] = [
     new BasicSensorMapping(SensorTypes.S_HUM, HumiditySensorHandler),
     new BasicSensorMapping(SensorTypes.S_TEMP, TemperatureSensorHandler),
     new BasicSensorMapping(SensorTypes.S_LIGHT_LEVEL, LightSensorHandler),
+    new BasicSensorMapping(SensorTypes.S_BARO, AirPressureSensorHandler),
     new BasicSensorMapping(SensorTypes.S_DOOR, ContactSensorHandler),
+    new BasicSensorMapping(SensorTypes.S_MOTION, OccupancySensorHandler),
   ];
 
   createServicesFromPresentation(
