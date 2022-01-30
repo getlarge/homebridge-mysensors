@@ -21,9 +21,9 @@ export class BatteryCreator implements ServiceCreator {
     accessory: BasicAccessory,
     protocol: MySensorsProtocol<Commands.presentation, Transport>
   ): void {
-    // TODO: filter out "real" multimeter using protocol.payload ?
     if (
       SensorTypes.S_MULTIMETER === protocol.type &&
+      protocol.payload.toString().toLowerCase().includes('batt') &&
       !accessory.isServiceHandlerIdKnown(
         BatteryHandler.generateIdentifier(
           getEndpoint(accessory.nodeId, protocol.childId, protocol.type)
