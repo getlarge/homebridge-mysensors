@@ -26,15 +26,30 @@ import {
 } from './mySensors/protocol';
 
 export interface MySensorsTransportEvents {
-  presentation: (
+  [Commands.presentation]: (
     msg: MySensorsProtocol<Commands.presentation>,
     transport: Transport
   ) => void;
-  internal: (
+  [Commands.internal]: (
     msg: MySensorsProtocol<Commands.internal>,
     transport: Transport
   ) => void;
-  set: (msg: MySensorsProtocol<Commands.set>, transport: Transport) => void;
+  [Commands.set]: (
+    msg: MySensorsProtocol<Commands.set>,
+    transport: Transport
+  ) => void;
+  [Commands.req]: (
+    msg: MySensorsProtocol<Commands.req>,
+    transport: Transport
+  ) => void;
+  [Commands.stream]: (
+    msg: MySensorsProtocol<Commands.stream>,
+    transport: Transport
+  ) => void;
+
+  connect: () => void;
+  disconnect: () => void;
+  error: (error: Error) => void;
 }
 
 export abstract class MySensorsTransport<
@@ -70,7 +85,7 @@ export abstract class MySensorsTransport<
       case Commands.presentation:
         // register device/sensors
         this.emit(
-          'presentation',
+          protocol.method,
           protocol as MySensorsProtocol<Commands.presentation>,
           transport
         );
@@ -78,7 +93,7 @@ export abstract class MySensorsTransport<
       case Commands.internal:
         // internal mysensors command
         this.emit(
-          'internal',
+          protocol.method,
           protocol as MySensorsProtocol<Commands.internal>,
           transport
         );
@@ -86,7 +101,7 @@ export abstract class MySensorsTransport<
       case Commands.set:
         // Probably a status update from a device
         this.emit(
-          'set',
+          protocol.method,
           protocol as MySensorsProtocol<Commands.set>,
           transport
         );
@@ -182,15 +197,26 @@ export class MySensorsMqttTransport extends MySensorsTransport<MqttClient> {
 
   initializeClient(config: PluginConfiguration): MqttClient | undefined {
     if (!config.mqtt?.server) {
-      this.log.error('No MQTT server defined');
+      this.log.error('No MQTT broker defined');
       return;
     }
-    this.log.info(`Connecting to MQTT server at ${config.mqtt.server}`);
+    this.log.info(`Connecting to MQTT broker at ${config.mqtt.server}`);
     const options = this.createOptions();
     const mqttClient = connect(config.mqtt.server, options);
     mqttClient.on('connect', () => {
-      this.log.info('Connected to MQTT server');
+      this.log.info('Connected to MQTT broker');
+      this.emit('connect');
     });
+    mqttClient.on('close', () => {
+      this.log.info('Disconnected from MQTT broker');
+      this.emit('disconnect');
+    });
+
+    mqttClient.on('error', (err) => {
+      this.log.error(errorToString(err));
+      this.emit('error', err);
+    });
+
     return mqttClient;
   }
 
@@ -285,6 +311,15 @@ export class MySensorsSerialTransport extends MySensorsTransport<SerialPort> {
     const serialClient = new SerialPort(config.serial.port, options);
     serialClient.on('open', () => {
       this.log.info('Connected to Serial port');
+      this.emit('connect');
+    });
+    serialClient.on('close', () => {
+      this.log.info('Disconnected from Serial port');
+      this.emit('disconnect');
+    });
+    serialClient.on('error', (err) => {
+      this.log.error(errorToString(err));
+      this.emit('error', err);
     });
     return serialClient;
   }

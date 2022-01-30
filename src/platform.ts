@@ -60,10 +60,10 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
       this.log,
       this.pluginConfig
     );
-    this.mqttTransport.on('presentation', (msg, transport) => {
+    this.mqttTransport.on(Commands.presentation, (msg, transport) => {
       this.createOrUpdateAccessory(msg, transport);
     });
-    this.mqttTransport.on('set', (msg, transport) => {
+    this.mqttTransport.on(Commands.set, (msg, transport) => {
       this.handleDeviceUpdate(msg, transport);
     });
 
@@ -72,10 +72,10 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
       this.pluginConfig
     );
 
-    this.serialTransport.on('presentation', (msg, transport) => {
+    this.serialTransport.on(Commands.presentation, (msg, transport) => {
       this.createOrUpdateAccessory(msg, transport);
     });
-    this.serialTransport.on('set', (msg, transport) => {
+    this.serialTransport.on(Commands.set, (msg, transport) => {
       this.handleDeviceUpdate(msg, transport);
     });
 
