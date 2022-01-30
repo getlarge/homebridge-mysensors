@@ -1,6 +1,7 @@
 import { Commands, MySensorsProtocol } from '../mySensors/protocol';
 import { BasicSensorCreator } from './basicSensors';
 import { BasicAccessory, ServiceCreator } from './interfaces';
+import { SwitchCreator } from './switch';
 
 export interface ServiceCreatorManager {
   createHomeKitEntitiesFromPresentation(
@@ -16,6 +17,7 @@ interface ServiceCreatorConstructor {
 export class BasicServiceCreatorManager implements ServiceCreatorManager {
   private static readonly constructors: ServiceCreatorConstructor[] = [
     BasicSensorCreator,
+    SwitchCreator,
   ];
 
   private static instance: BasicServiceCreatorManager;
