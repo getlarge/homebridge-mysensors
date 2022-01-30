@@ -11,8 +11,15 @@ import {
 export interface BasicAccessory {
   log: BasicLogger;
   displayName: string;
+  UUID: string;
+  serialNumber: string;
+  nodeId: number;
+  transport: Transport;
+  context: MySensorsContext<Commands>;
   getDefaultServiceDisplayName(subType: string | undefined): string;
   getOrAddService(service: Service): Service;
+  registerServiceHandler(handler: ServiceHandler): void;
+  isServiceHandlerIdKnown(identifier: string): boolean;
   queueDataForSetAction(
     children: {
       childId: number;
@@ -23,8 +30,6 @@ export interface BasicAccessory {
   queueKeyForGetAction(
     children: { childId: number; resources: VariableTypes | VariableTypes[] }[]
   ): void;
-  registerServiceHandler(handler: ServiceHandler): void;
-  isServiceHandlerIdKnown(identifier: string): boolean;
 }
 
 export interface ServiceHandler {

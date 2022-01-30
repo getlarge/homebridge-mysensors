@@ -6,7 +6,7 @@ import {
 
 import { hap } from '../hap';
 import { getOrAddCharacteristic } from '../helpers';
-import { resourcesCanBeGet } from '../mySensors/helpers';
+import { getEndpoint, resourcesCanBeGet } from '../mySensors/helpers';
 import { presentations } from '../mySensors/presentations';
 import {
   Commands,
@@ -25,7 +25,9 @@ export class SwitchCreator implements ServiceCreator {
     if (
       SensorTypes.S_BINARY === protocol.type &&
       !accessory.isServiceHandlerIdKnown(
-        SwitchHandler.generateIdentifier(protocol.type)
+        SwitchHandler.generateIdentifier(
+          getEndpoint(accessory.nodeId, protocol.childId, protocol.type)
+        )
       )
     ) {
       this.createService(accessory, protocol);
@@ -65,7 +67,9 @@ class SwitchHandler implements ServiceHandler {
     readonly resources: `${VariableTypes}`[],
     readonly childId: number
   ) {
-    this.identifier = SwitchHandler.generateIdentifier(this.sensorType);
+    this.identifier = SwitchHandler.generateIdentifier(
+      getEndpoint(this.accessory.nodeId, this.childId, this.sensorType)
+    );
     const serviceName = accessory.getDefaultServiceDisplayName(this.sensorType);
     const service = accessory.getOrAddService(
       new hap.Service.Switch(serviceName, this.sensorType)

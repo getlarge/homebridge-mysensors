@@ -2,7 +2,7 @@ import { Characteristic, PrimitiveTypes, Service, WithUUID } from 'homebridge';
 
 import { hap } from '../hap';
 import { getOrAddCharacteristic } from '../helpers';
-import { resourcesCanBeGet } from '../mySensors/helpers';
+import { getEndpoint, resourcesCanBeGet } from '../mySensors/helpers';
 import { presentations } from '../mySensors/presentations';
 import {
   Commands,
@@ -26,7 +26,7 @@ interface ServiceConstructor {
 }
 
 interface IdentifierGenerator {
-  (endpoint: SensorTypes | undefined): string;
+  (endpoint: string | undefined): string;
 }
 
 interface BasicSensorConstructor {
@@ -66,8 +66,10 @@ abstract class BasicSensorHandler implements ServiceHandler {
     identifierGen: IdentifierGenerator,
     service: ServiceConstructor
   ) {
+    this.identifier = identifierGen(
+      getEndpoint(accessory.nodeId, this.childId, this.sensorType)
+    );
     this.serviceName = accessory.getDefaultServiceDisplayName(this.sensorType);
-    this.identifier = identifierGen(sensorType);
     this.service = accessory.getOrAddService(
       service(this.serviceName, this.sensorType)
     );
@@ -404,7 +406,9 @@ export class BasicSensorCreator implements ServiceCreator {
       if (
         m.type === protocol.type &&
         !accessory.isServiceHandlerIdKnown(
-          m.implementation.generateIdentifier(protocol.type)
+          m.implementation.generateIdentifier(
+            getEndpoint(accessory.nodeId, protocol.childId, protocol.type)
+          )
         )
       ) {
         this.createService(

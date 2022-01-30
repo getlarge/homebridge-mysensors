@@ -1,6 +1,6 @@
 import { hap } from '../hap';
 import { getOrAddCharacteristic } from '../helpers';
-import { resourcesCanBeGet } from '../mySensors/helpers';
+import { getEndpoint, resourcesCanBeGet } from '../mySensors/helpers';
 import { presentations } from '../mySensors/presentations';
 import {
   Commands,
@@ -25,7 +25,9 @@ export class BatteryCreator implements ServiceCreator {
     if (
       SensorTypes.S_MULTIMETER === protocol.type &&
       !accessory.isServiceHandlerIdKnown(
-        BatteryHandler.generateIdentifier(protocol.type)
+        BatteryHandler.generateIdentifier(
+          getEndpoint(accessory.nodeId, protocol.childId, protocol.type)
+        )
       )
     ) {
       this.createService(accessory, protocol);
@@ -66,9 +68,10 @@ class BatteryHandler implements ServiceHandler {
     readonly resources: `${VariableTypes}`[],
     readonly childId: number
   ) {
-    this.identifier = BatteryHandler.generateIdentifier(sensorType);
-
-    const serviceName = accessory.getDefaultServiceDisplayName(sensorType);
+    this.identifier = BatteryHandler.generateIdentifier(
+      getEndpoint(this.accessory.nodeId, this.childId, this.sensorType)
+    );
+    const serviceName = accessory.getDefaultServiceDisplayName(this.sensorType);
     accessory.log.debug(`Configuring Battery Service for ${serviceName}`);
     const service = accessory.getOrAddService(
       new hap.Service.Battery(serviceName, sensorType)

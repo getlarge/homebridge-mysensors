@@ -151,3 +151,11 @@ export function resourcesCanBeGet(_resources: `${VariableTypes}`[]) {
   // TODO: create object with gettable resources
   return true;
 }
+
+export function getEndpoint(
+  nodeId: number | string,
+  childId: number | string,
+  sensorType: `${SensorTypes}`
+) {
+  return `${nodeId}_${childId}_${sensorType}`;
+}
