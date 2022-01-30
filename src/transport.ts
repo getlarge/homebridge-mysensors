@@ -191,7 +191,7 @@ export class MySensorsMqttTransport extends MySensorsTransport<MqttClient> {
 
     if (rejectUnauthorized !== undefined && !rejectUnauthorized) {
       this.log.debug(
-        'MQTT reject_unauthorized set false, ignoring certificate warnings.'
+        'MQTT rejectUnauthorized set false, ignoring certificate warnings.'
       );
       options.rejectUnauthorized = false;
     }

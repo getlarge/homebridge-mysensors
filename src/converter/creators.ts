@@ -1,5 +1,6 @@
 import { Commands, MySensorsProtocol } from '../mySensors/protocol';
 import { BasicSensorCreator } from './basicSensors';
+import { BatteryCreator } from './battery';
 import { BasicAccessory, ServiceCreator } from './interfaces';
 import { SwitchCreator } from './switch';
 
@@ -18,6 +19,7 @@ export class BasicServiceCreatorManager implements ServiceCreatorManager {
   private static readonly constructors: ServiceCreatorConstructor[] = [
     BasicSensorCreator,
     SwitchCreator,
+    BatteryCreator,
   ];
 
   private static instance: BasicServiceCreatorManager;
