@@ -130,6 +130,8 @@ export abstract class MySensorsTransport<
 
 export class MySensorsMqttTransport extends MySensorsTransport<MqttClient> {
   private readonly mqttConfig: Partial<MqttConfiguration>;
+  readonly publishPrefix: string;
+  readonly subscribePrefix: string;
 
   constructor(
     public readonly log: Logger,
@@ -137,6 +139,8 @@ export class MySensorsMqttTransport extends MySensorsTransport<MqttClient> {
   ) {
     super(config, Transport.MQTT);
     this.mqttConfig = this.config.mqtt || {};
+    this.publishPrefix = this.config.mqtt?.publishPrefix || 'out';
+    this.subscribePrefix = this.config.mqtt?.subscribePrefix || 'in';
     this.onMessage = this.onMessage.bind(this);
     this.client = this.initializeClient(config);
   }
@@ -230,6 +234,16 @@ export class MySensorsMqttTransport extends MySensorsTransport<MqttClient> {
   }
 
   onMessage(topic: MySensorsMqttPattern, payload: Buffer): void {
+    if (
+      !topic.startsWith(this.publishPrefix) &&
+      !topic.startsWith(this.subscribePrefix)
+    ) {
+      this.log.debug(
+        `Ignore message, because prefix does not match ${this.publishPrefix} or ${this.subscribePrefix}`,
+        topic
+      );
+      return;
+    }
     const protocol = mySensorsProtocolDecoder(
       Transport.MQTT,
       topic,
@@ -258,7 +272,7 @@ export class MySensorsMqttTransport extends MySensorsTransport<MqttClient> {
         return Promise.resolve();
       }
 
-      this.log.info(`Publish '${topic}': '${payload}'`);
+      this.log.info(`MQTT Publish '${topic}': '${payload}'`);
       return new Promise<void>((resolve) => {
         this.client?.publish(topic, payload, options, (error) => {
           if (error) {
@@ -351,7 +365,7 @@ export class MySensorsSerialTransport extends MySensorsTransport<SerialPort> {
         this.log.error(`Cannot send message to '${message}'}`);
         return Promise.resolve();
       }
-      this.log.info(`Publish '${message}'`);
+      this.log.info(`Serial Publish '${message}'`);
       return new Promise<void>((resolve) => {
         this.client?.write(message, (error) => {
           if (error) {

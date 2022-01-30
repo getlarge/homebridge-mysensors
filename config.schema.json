@@ -22,6 +22,20 @@
             "required": true,
             "placeholder": "mqtt://localhost:1883"
           },
+          "publishPrefix": {
+            "title": "Publish prefix",
+            "type": "string",
+            "required": true,
+            "default": "mygateway1-out",
+            "placeholder": "mygateway1-out"
+          },
+          "subscribePrefix": {
+            "title": "Subscribe prefix",
+            "type": "string",
+            "required": true,
+            "default": "mygateway1-in",
+            "placeholder": "mygateway1-in"
+          },
           "ca": {
             "title": "SSL/TLS certificate of CA",
             "type": "string",

@@ -33,7 +33,6 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
 
   // this is used to track restored cached accessories
   private readonly accessories: MySensorsAccessory[] = [];
-
   public readonly pluginConfig?: PluginConfiguration;
   private readonly mqttTransport?: MySensorsMqttTransport;
   private readonly serialTransport?: MySensorsSerialTransport;
@@ -98,7 +97,6 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
     payload: string,
     options?: IClientPublishOptions
   ) {
-    this.log.error(`publish message, transport: ${transport}, topic: ${topic}`);
     if (transport === Transport.MQTT) {
       return this.mqttTransport?.publishMessage(
         topic as MySensorsMqttPattern,

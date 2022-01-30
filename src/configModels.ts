@@ -33,6 +33,8 @@ export const isPluginConfiguration = (
 
 export interface MqttConfiguration extends Record<string, unknown> {
   server: string;
+  publishPrefix: string;
+  subscribePrefix: string;
   ca?: string;
   key?: string;
   cert?: string;
@@ -47,7 +49,11 @@ export interface MqttConfiguration extends Record<string, unknown> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isMqttConfiguration = (x: any): x is MqttConfiguration =>
-  x.server !== undefined && typeof x.server === 'string' && x.server.length > 0;
+  x.server !== undefined &&
+  typeof x.server === 'string' &&
+  x.server.length > 0 &&
+  typeof x.publishPrefix === 'string' &&
+  typeof x.subscribePrefix === 'string';
 
 export interface SerialConfiguration extends Record<string, unknown> {
   port: string;
