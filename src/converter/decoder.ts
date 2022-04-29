@@ -1,7 +1,6 @@
 import {
   getTypeFromMethod,
   isValidAck,
-  isValidDirection,
   isValidId,
   isValidMethod,
   isValidPayload,
@@ -56,7 +55,6 @@ function getMySensorsProtocol(
   payload = typeof payload === 'undefined' ? params.payload : payload;
   const sensorType = getTypeFromMethod(Number(method), Number(type));
   if (
-    isValidDirection(gatewayAndDirection) &&
     isValidId(nodeId) &&
     isValidId(childId) &&
     isValidMethod(method) &&

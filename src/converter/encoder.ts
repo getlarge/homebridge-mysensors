@@ -1,6 +1,5 @@
 import {
   isValidAck,
-  isValidDirection,
   isValidId,
   isValidMethod,
   isValidPayload,
@@ -38,7 +37,6 @@ export function mySensorsMqttEncoder(protocol: MySensorsProtocol): {
     protocol;
 
   if (
-    isValidDirection(gatewayAndDirection) &&
     isValidId(nodeId) &&
     isValidId(childId) &&
     isValidMethod(method) &&

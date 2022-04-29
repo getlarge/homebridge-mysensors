@@ -4,7 +4,6 @@ import {
   Ack,
   Commands,
   CommandsAsInteger,
-  Directions,
   InternalTypes,
   Methods,
   MySensorsProtocol,
@@ -14,12 +13,6 @@ import {
   VariableTypes,
 } from './protocol';
 import { sets } from './sets';
-
-// interpolation from mysensors MQTT protocol,
-//! TODO: find another way to detect message direction
-export function isValidDirection(x?: string): x is `${string}-${Directions}` {
-  return Object.values(Directions).some((direction) => x?.includes(direction));
-}
 
 export function isValidId(x?: string | number): x is string | number {
   const id = Number(x);
@@ -117,7 +110,6 @@ export function isMySensorsProtocol<C extends Commands = Commands>(
   const { nodeId, childId, method, ack, type, payload } = params;
 
   return (
-    // isValidDirection(gatewayAndDirection) &&
     isValidId(nodeId) &&
     isValidId(childId) &&
     isValidCommand(method) &&
