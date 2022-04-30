@@ -388,14 +388,21 @@ class OccupancySensorHandler extends BinarySensorHandler {
 }
 
 export class BasicSensorCreator implements ServiceCreator {
-  private static mapping: BasicSensorMapping[] = [
-    new BasicSensorMapping(SensorTypes.S_HUM, HumiditySensorHandler),
-    new BasicSensorMapping(SensorTypes.S_TEMP, TemperatureSensorHandler),
-    new BasicSensorMapping(SensorTypes.S_LIGHT_LEVEL, LightSensorHandler),
-    new BasicSensorMapping(SensorTypes.S_BARO, AirPressureSensorHandler),
-    new BasicSensorMapping(SensorTypes.S_DOOR, ContactSensorHandler),
-    new BasicSensorMapping(SensorTypes.S_MOTION, OccupancySensorHandler),
-  ];
+  private static sensorTypes = {
+    [SensorTypes.S_HUM]: HumiditySensorHandler,
+    [SensorTypes.S_TEMP]: TemperatureSensorHandler,
+    [SensorTypes.S_LIGHT_LEVEL]: LightSensorHandler,
+    [SensorTypes.S_BARO]: AirPressureSensorHandler,
+    [SensorTypes.S_DOOR]: ContactSensorHandler,
+    [SensorTypes.S_MOTION]: OccupancySensorHandler,
+  };
+
+  private static mapping: BasicSensorMapping[] = Object.entries(
+    this.sensorTypes
+  ).map(
+    ([sensorType, impl]) =>
+      new BasicSensorMapping(sensorType as SensorTypes, impl)
+  );
 
   createServicesFromPresentation(
     accessory: BasicAccessory,
@@ -403,14 +410,12 @@ export class BasicSensorCreator implements ServiceCreator {
   ): void {
     BasicSensorCreator.mapping.forEach((m) => {
       // only create service for a given protocol.type and if it does not already exist
-      if (
-        m.type === protocol.type &&
-        !accessory.isServiceHandlerIdKnown(
-          m.implementation.generateIdentifier(
-            getEndpoint(accessory.nodeId, protocol.childId, protocol.type)
-          )
+      const isServiceHandlerIdKnown = accessory.isServiceHandlerIdKnown(
+        m.implementation.generateIdentifier(
+          getEndpoint(accessory.nodeId, protocol.childId, protocol.type)
         )
-      ) {
+      );
+      if (m.type === protocol.type && !isServiceHandlerIdKnown) {
         this.createService(
           accessory,
           protocol,
