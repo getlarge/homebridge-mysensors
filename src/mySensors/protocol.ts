@@ -189,7 +189,14 @@ export type Type = `${SensorTypes | InternalTypes | VariableTypes}`;
 
 export type Payload = string | number;
 
-// MQTT Pattern
+export enum Transport {
+  SERIAL = 'serial',
+  MQTT = 'mqtt',
+}
+
+/*
+ * MQTT Pattern
+ */
 
 export const MySensorsMqttPattern =
   '+gatewayAndDirection/+nodeId/+childId/+method/+ack/+type';
@@ -197,18 +204,15 @@ export const MySensorsMqttPattern =
 export type MySensorsMqttPattern =
   `${string}-${Directions}/${number}/${number}/${CommandsAsInteger}/${Ack}/${Type}`;
 
-// Serial Pattern
+/*
+ * Serial Pattern
+ */
 
 export const MySensorsSerialPattern =
   '+nodeId;+childId;+method;+ack;+type;+payload';
 
 export type MySensorsSerialPattern =
   `${number};${number};${CommandsAsInteger};${Ack};${Type};${Payload}`;
-
-export enum Transport {
-  SERIAL = 'serial',
-  MQTT = 'mqtt',
-}
 
 export type MySensorsProtocol<
   M extends `${Commands}` = Commands,

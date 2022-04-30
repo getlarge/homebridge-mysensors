@@ -12,6 +12,7 @@ import {
   ServiceHandler,
 } from './converter/interfaces';
 import { hap } from './hap';
+import { isSupportedDevice } from './helpers';
 import { isMySensorsProtocol, protocolsAreEquals } from './mySensors/helpers';
 import {
   Commands,
@@ -46,6 +47,8 @@ export class MySensorsAccessory implements BasicAccessory {
   private readonly serviceHandlers = new Map<string, ServiceHandler>();
   private readonly serviceIds = new Set<string>();
 
+  readonly isSupported: boolean;
+  private isGroupAccessory = false;
   private pendingPublishData: SetChildrenQueue;
   private publishIsScheduled: boolean;
   private readonly pendingGetKeys: GetChildrenQueue;
@@ -53,10 +56,13 @@ export class MySensorsAccessory implements BasicAccessory {
 
   static getDisplayName<T extends Transport>(
     protocol: MySensorsProtocol<Commands, T>,
-    transport: T
+    transport: T,
+    group?: boolean
   ): string {
     const { childId, nodeId } = protocol;
-    return `MySensors-${nodeId}-${childId}-${transport.toUpperCase()}`;
+    return group
+      ? `MySensors-${nodeId}-${transport.toUpperCase()}`
+      : `MySensors-${nodeId}-${childId}-${transport.toUpperCase()}`;
   }
 
   static getUniqueIdForService(service: Service): string {
@@ -79,8 +85,22 @@ export class MySensorsAccessory implements BasicAccessory {
     return this.platform.log;
   }
 
+  get isGroup(): boolean {
+    return this.isGroupAccessory;
+  }
+
+  set isGroup(value: boolean) {
+    this.isGroupAccessory = value;
+  }
+
   get nodeId(): number {
     return this.accessory.context.protocol.nodeId;
+  }
+
+  get childId(): number | null {
+    return this.isGroupAccessory
+      ? null
+      : this.accessory.context.protocol.childId;
   }
 
   get transport(): Transport {
@@ -94,7 +114,8 @@ export class MySensorsAccessory implements BasicAccessory {
   get displayName(): string {
     return MySensorsAccessory.getDisplayName(
       this.accessory.context.protocol,
-      this.transport
+      this.transport,
+      this.isGroupAccessory
     );
   }
 
@@ -136,6 +157,11 @@ export class MySensorsAccessory implements BasicAccessory {
     public readonly accessory: PlatformAccessory<MySensorsContext>,
     serviceCreatorManager?: ServiceCreatorManager
   ) {
+    const protocol = accessory.context
+      .protocol as MySensorsProtocol<Commands.presentation>;
+
+    this.isSupported = isSupportedDevice(protocol);
+
     // Store ServiceCreatorManager
     if (serviceCreatorManager === undefined) {
       this.serviceCreatorManager = BasicServiceCreatorManager.getInstance();
@@ -151,7 +177,7 @@ export class MySensorsAccessory implements BasicAccessory {
     this.pendingGetKeys = new Map();
     this.getIsScheduled = false;
 
-    this.updateDeviceInformation(accessory.context.protocol, true);
+    this.updateDeviceInformation(protocol, true);
 
     // Ask MySensors device for a status update at least once every 4 hours.
     this.updateTimer = new ExtendedTimer(() => {

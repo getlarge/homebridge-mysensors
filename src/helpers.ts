@@ -1,5 +1,8 @@
 import { Characteristic, Service, WithUUID } from 'homebridge';
 
+import { SUPPORTED_PRESENTATION_TYPES } from './converter/contants';
+import { Commands, MySensorsProtocol } from './mySensors/protocol';
+
 export function errorToString(e: unknown): string {
   if (typeof e === 'string') {
     return e;
@@ -35,4 +38,11 @@ export function roundToDecimalPlaces(
   }
   const maxDecimals = Math.pow(10, decimalPlaces);
   return Math.round((input + Number.EPSILON) * maxDecimals) / maxDecimals;
+}
+
+export function isSupportedDevice(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protocol: MySensorsProtocol<Commands.presentation>
+): boolean {
+  return SUPPORTED_PRESENTATION_TYPES.includes(protocol.type);
 }

@@ -10,7 +10,7 @@ import { IClientPublishOptions } from 'mqtt';
 
 import { isPluginConfiguration, PluginConfiguration } from './configModels';
 import { MySensorsContext } from './converter/interfaces';
-import { errorToString } from './helpers';
+import { errorToString, isSupportedDevice } from './helpers';
 import {
   Commands,
   MySensorsMqttPattern,
@@ -62,6 +62,9 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
     this.mqttTransport.on(Commands.presentation, (msg, transport) => {
       this.createOrUpdateAccessory(msg, transport);
     });
+    // this.mqttTransport.on(Commands.internal, (msg, transport) => {
+    // TODO: watch for I_PRE_SLEEP_NOTIFICATION I_POST_SLEEP_NOTIFICATION to detect battery sensor
+    // });
     this.mqttTransport.on(Commands.set, (msg, transport) => {
       this.handleDeviceUpdate(msg, transport);
     });
@@ -87,8 +90,6 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
       this.mqttTransport?.openListener();
       this.serialTransport?.openListener();
     });
-
-    // TODO: add logic to remove stale devices
   }
 
   publishMessage<T extends Transport>(
@@ -124,25 +125,39 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
    */
   configureAccessory(accessory: PlatformAccessory<MySensorsContext>): void {
     this.log.info('Loading accessory from cache:', accessory.displayName);
-
-    if (this.accessories.findIndex((acc) => acc.UUID === accessory.UUID) < 0) {
-      // New entry
+    const index = this.accessories.findIndex(
+      (acc) => acc.UUID === accessory.UUID
+    );
+    if (index < 0) {
+      const { protocol, transport } = accessory.context;
       const displayName = MySensorsAccessory.getDisplayName(
-        accessory.context.protocol,
-        accessory.context.transport
+        protocol,
+        transport
       );
       this.log.info(`Restoring accessory: ${displayName}`);
+      // New entry
       const acc = new MySensorsAccessory(this, accessory);
+      if (!acc.isSupported) {
+        this.log.debug(`Accessory ${protocol.type} not supported`);
+        return;
+      }
       // add the restored accessory to the accessories cache so we can track if it has already been registered
       this.accessories.push(acc);
     }
+
+    // TODO: create group accessory (by nodeId) with merged services ?
+    //  const acc = new MySensorsAccessory(this, accessory);
+    //  acc.isGroup = true
   }
 
   private findAccessory(
-    protocol: MySensorsProtocol,
+    protocol: MySensorsProtocol<Commands.presentation>,
     transport: Transport
   ): MySensorsAccessory | undefined {
     const displayName = MySensorsAccessory.getDisplayName(protocol, transport);
+    if (!isSupportedDevice(protocol)) {
+      return undefined;
+    }
     const uuid = this.api.hap.uuid.generate(displayName);
     return this.accessories.find((accessory) => accessory.UUID === uuid);
   }
@@ -150,7 +165,11 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
   private createAccessory(
     protocol: MySensorsProtocol<Commands.presentation>,
     transport: Transport
-  ): MySensorsAccessory {
+  ): MySensorsAccessory | undefined {
+    if (!isSupportedDevice(protocol)) {
+      // this.log.debug(`Unsupported MySensors device: ${displayName} - ${protocol.type});
+      return undefined;
+    }
     const displayName = MySensorsAccessory.getDisplayName(protocol, transport);
     const uuid = this.api.hap.uuid.generate(displayName);
     this.log.info('Adding new accessory:', displayName);
@@ -160,7 +179,6 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
     );
     accessory.context.protocol = protocol;
     accessory.context.transport = transport;
-
     // link the accessory to your platform
     this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
       accessory,
@@ -168,6 +186,11 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
     // create the accessory handler for the newly created accessory
     const acc = new MySensorsAccessory(this, accessory);
     this.accessories.push(acc);
+
+    // TODO: find or create group accessory (by nodeId) with merged services ?
+    // const groupAccessory = this.findGroupAccessory ||  this.createGroupAccessory
+    // const services = acc.accessory.services
+    // groupAccessory.accessory.services
     return acc;
   }
 
@@ -193,7 +216,7 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
   }
 
   private createOrUpdateAccessory(
-    protocol: MySensorsProtocol,
+    protocol: MySensorsProtocol<Commands.presentation>,
     transport: Transport
   ): void {
     const existingAccessory = this.findAccessory(protocol, transport);
@@ -228,7 +251,7 @@ export class MySensorsPlatform implements DynamicPlatformPlugin {
   }
 
   private removeAccessory(
-    protocol: MySensorsProtocol,
+    protocol: MySensorsProtocol<Commands.presentation>,
     transport: Transport
   ): void {
     const existingAccessory = this.findAccessory(protocol, transport);
