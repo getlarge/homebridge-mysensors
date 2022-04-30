@@ -1,4 +1,5 @@
-import Readline from '@serialport/parser-readline';
+import { AutoDetectTypes } from '@serialport/bindings-cpp';
+import { ReadlineParser } from '@serialport/parser-readline';
 import EventEmitter from 'events';
 import { readFileSync } from 'fs';
 import { Logger } from 'homebridge';
@@ -8,7 +9,7 @@ import {
   IClientPublishOptions,
   MqttClient,
 } from 'mqtt';
-import SerialPort, { OpenOptions } from 'serialport';
+import { SerialPort, SerialPortOpenOptions } from 'serialport';
 
 import {
   MqttConfiguration,
@@ -303,10 +304,12 @@ export class MySensorsSerialTransport extends MySensorsTransport<SerialPort> {
     this.client = this.initializeClient(config);
   }
 
-  private createOptions(): OpenOptions {
-    const { baudRate } = this.serialConfig;
-    const options: OpenOptions = {
+  private createOptions(): SerialPortOpenOptions<AutoDetectTypes> {
+    const { baudRate, port } = this.serialConfig;
+    const options: SerialPortOpenOptions<AutoDetectTypes> = {
       autoOpen: true,
+      baudRate: 115200,
+      path: port || '',
     };
     if (baudRate) {
       this.log.debug(`Using Serial baud rate: ${baudRate}`);
@@ -322,7 +325,7 @@ export class MySensorsSerialTransport extends MySensorsTransport<SerialPort> {
     }
     this.log.info(`Connecting to Serial port at ${config.serial.port}`);
     const options = this.createOptions();
-    const serialClient = new SerialPort(config.serial.port, options);
+    const serialClient = new SerialPort(options);
     serialClient.on('open', () => {
       this.log.info('Connected to Serial port');
       this.emit('connect');
@@ -341,7 +344,9 @@ export class MySensorsSerialTransport extends MySensorsTransport<SerialPort> {
   openListener(): void {
     // Setup Serial parser
     if (this.client instanceof SerialPort) {
-      const parser = this.client?.pipe(new Readline({ delimiter: '\r\n' }));
+      const parser = this.client?.pipe(
+        new ReadlineParser({ delimiter: '\r\n' })
+      );
       parser.on('data', this.onMessage);
     }
   }
